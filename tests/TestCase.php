@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Imdhemy\Purchases\Tests;
 
 use Faker\Factory;
+use Illuminate\Testing\PendingCommand;
 use Imdhemy\Purchases\ServiceProviders\LiapServiceProvider;
 use Imdhemy\Purchases\Tests\Doubles\LiapTestProvider;
 use Lcobucci\JWT\Builder;
@@ -93,22 +94,42 @@ WtcP+PnScROkjnSv6H6A6ekLVAzQYg==';
     }
 
     /**
-     * @param array<string, string> $claims
+     * @param array<non-empty-string, string> $claims
      */
     protected function sign(array $claims): UnencryptedToken
     {
-        $key = InMemory::base64Encoded('hiG8DlOKvtih6AxlZn5XKImZ06yu8I3mkOzaJrEuW8yAv8Jnkw330uMt8AEqQ5LB');
+        $signingKey = InMemory::base64Encoded('hiG8DlOKvtih6AxlZn5XKImZ06yu8I3mkOzaJrEuW8yAv8Jnkw330uMt8AEqQ5LB');
 
         return (new JwtFacade())->issue(
             new Sha256(),
-            $key,
+            $signingKey,
             static function (Builder $builder) use ($claims): Builder {
                 foreach ($claims as $key => $value) {
-                    $builder->withClaim($key, $value);
+                    $builder = $builder->withClaim($key, $value);
                 }
 
                 return $builder;
             }
         );
+    }
+
+    public function artisan($command, $parameters = []): PendingCommand
+    {
+        $result = parent::artisan($command, $parameters);
+        assert($result instanceof PendingCommand);
+
+        return $result;
+    }
+
+    protected function clearLogs(): void
+    {
+        file_put_contents(storage_path('logs/laravel.log'), '');
+    }
+
+    protected function assertLogsContain(string $needle, string $message = ''): void
+    {
+        $logs = file_get_contents(storage_path('logs/laravel.log'));
+
+        $this->assertStringContainsString($needle, $logs, $message);
     }
 }
